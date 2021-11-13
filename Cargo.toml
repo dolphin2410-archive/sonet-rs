@@ -1,0 +1,7 @@
+[workspace]
+
+members = [
+    "rust-client",
+    "rust-server",
+    "rust-common",
+]
