@@ -1,2 +1,4 @@
-pub mod packets;
-pub mod test;
+pub mod api;
+pub mod core;
+
+pub extern crate tokio;
