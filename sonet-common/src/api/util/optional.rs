@@ -24,4 +24,11 @@ impl <T> OptionalData<T> {
             _ => Err("NULL")
         }
     }
+
+    pub fn get_mutable(&self) -> Result<&mut T, &str> {
+        match self {
+            OptionalData::DATA(&mut value) => Ok(value),
+            _ => Err("NULL")
+        }
+    }
 }

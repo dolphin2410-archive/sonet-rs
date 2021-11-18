@@ -7,16 +7,17 @@ use crate::api::util::optional::*;
 use std::ptr;
 use std::pin::Pin;
 use std::io::Result;
+use crate::api::packets::Packet;
+use crate::api::util::java_types::Int;
 
-pub struct SonetServer<'a> {
+pub struct SonetServer  {
     pub address: SocketAddr,
-    pub handlers: Vec<&'a Box<dyn PacketHandler>>,
+    pub handlers: Vec<Box<dyn Fn(Box<dyn Packet>)>>,
     server: Optional<TcpListener>
 }
 
-impl <'a> Server<'a> for SonetServer<'a> {
-
-    fn new(port: &i16) -> Self {
+impl Server for SonetServer {
+    fn new(port: Int) -> Self {
         let address = format!("127.0.0.1:{port}", port = port).parse::<SocketAddr>().unwrap();
         SonetServer {
             address,
@@ -39,13 +40,17 @@ impl <'a> Server<'a> for SonetServer<'a> {
         Box::pin(future)
     }
 
-    fn add_packet_handler(&mut self, handler: &'a Box<dyn PacketHandler>) {
-        self.handlers.push(&handler);
+    fn add_packet_handler<T>(&mut self, handler: &'static T) where T: Fn(Box<dyn Packet>) {
+        self.handlers.push(Box::new(handler));
     }
 
-    fn remove_packet_handler(&mut self, handler: &'a Box<dyn PacketHandler>) {
-        let index = (&self.handlers).iter().position(|x| ptr::eq(&*x, &*&handler)).unwrap();
-        self.handlers.remove(index);
+    fn remove_packet_handler<T>(&mut self, handler: &'static T) where T: Fn(Box<dyn Packet>) {
+        for i in 0..self.handlers.len() {
+            if ptr::eq(self.handlers.get(i).unwrap().as_ref(), handler) {
+                self.handlers.remove(i);
+                break
+            }
+        }
     }
 }
 
