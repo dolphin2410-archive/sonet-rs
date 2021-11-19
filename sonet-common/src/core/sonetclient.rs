@@ -24,7 +24,7 @@ impl Client for SonetClient {
         }
     }
 
-    fn connect(&mut self, address: &'static SocketAddr) -> Pin<Box<dyn Future<Output = Result<()>> + '_>> {
+    fn connect(&mut self, address: SocketAddr) -> Pin<Box<dyn Future<Output = Result<()>> + '_>> {
         let future = async move {
             self.stream.set(OptionalData::DATA(TcpStream::connect(address).await?));
 
@@ -35,7 +35,7 @@ impl Client for SonetClient {
     }
 
     fn send_packet(&mut self, packet: Box<dyn Packet>) {
-        self.stream.data.get_mutable().unwrap().write_all(PacketSerializer::serialize(packet));
+        self.stream.data.as_mut().unwrap().write_all(PacketSerializer::serialize(packet));
     }
 
     fn abort(&mut self) {

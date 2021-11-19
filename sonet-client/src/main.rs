@@ -30,7 +30,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let mut client = Sonet::create_client();
-    client.connect(&"127.0.0.1:9090".parse::<SocketAddr>().unwrap());
+    client.connect("127.0.0.1:9090".parse::<SocketAddr>().unwrap());
     client.send_packet(Box::new(MyPacket));
 
     Ok(())
