@@ -25,9 +25,9 @@ impl <T> OptionalData<T> {
         }
     }
 
-    pub fn get_mutable(&self) -> Result<&mut T, &str> {
+    pub fn as_mut(&mut self) -> Result<&mut T, &str> {
         match self {
-            OptionalData::DATA(&mut value) => Ok(value),
+            OptionalData::DATA(value) => Ok(value),
             _ => Err("NULL")
         }
     }
