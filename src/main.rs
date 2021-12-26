@@ -1,7 +1,7 @@
 use std::any::Any;
 
 use sonet_rs::packet;
-use sonet_rs::packet::{Packet, Registry};
+use sonet_rs::packet::PacketRegistry;
 
 packet! {
     MyPacket {
@@ -11,16 +11,27 @@ packet! {
 
 #[tokio::main]
 async fn main() -> Result<(), std::io::Error> {
-    let mut registry = Registry::new();
 
+    // Register Packet
+    let mut registry = PacketRegistry::new();
     MyPacket::register(&mut registry);
-    let mut vec: Vec<Box<dyn Any>> = Vec::new();
-    vec.push(Box::new("Oh This is Great!".to_string()));
-    let packet = registry.map.get_mut("MyPacket").unwrap();
-    let packet: Box<dyn Packet> = packet(vec);
-    let packet = packet.as_any().downcast_ref::<MyPacket>().unwrap();
 
-    println!("{}", &packet.s);
+    // Setup Packet Data
+    let mut packet_data: Vec<Box<dyn Any>> = Vec::new();
+    packet_data.push(Box::new("Oh This is Great!".to_string()));
+
+    // Call Packet Wrapper & Generate Packet Instance
+    let packet_wrapper = &registry.keys["MyPacket"];
+    let boxed_packet = packet_wrapper.create_instance(packet_data);
+    let my_packet = boxed_packet.as_any().downcast_ref::<MyPacket>().unwrap();
+
+
+    // Call Packet Data
+    println!("{}", &my_packet.s);
+
+    // Call Packet's fields
+    let fields: Vec<&'static str> = packet_wrapper.get_fields();
+    println!("{:?}", fields);
 
     // let mut server = SonetServer::new(9090).await?;
 

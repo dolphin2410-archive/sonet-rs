@@ -5,38 +5,50 @@ pub trait Packet {
     fn as_any(&self) -> &dyn Any;
 }
 
-pub struct Registry {
-    pub map: HashMap<String, Box<dyn Fn(Vec<Box<dyn Any>>) -> Box<dyn Packet>>>,
+pub struct PacketWrapper {
+    fields_accessor: Option<Box<dyn Fn() -> Vec<&'static str>>>,
+    instance_accessor: Option<Box<dyn Fn(Vec<Box<dyn Any>>) -> Box<dyn Packet>>>
 }
 
-impl Registry {
-    pub fn new() -> Self {
+impl PacketWrapper {
+    pub fn new(fields_accessor: Option<Box<dyn Fn() -> Vec<&'static str>>>, instance_accessor: Option<Box<dyn Fn(Vec<Box<dyn Any>>) -> Box<dyn Packet>>>) -> Self {
         Self {
-            map: HashMap::new()
+            fields_accessor,
+            instance_accessor
         }
     }
 
-    pub fn add_entry(&mut self, name: String, closure: Box<dyn Fn(Vec<Box<dyn Any>>) -> Box<dyn Packet>>) {
-        self.map.insert(name, closure);
+    pub fn new_empty() -> Self {
+        Self {
+            fields_accessor: None,
+            instance_accessor: None
+        }
+    }
+
+    pub fn create_instance(&self, data: Vec<Box<dyn Any>>) -> Box<dyn Packet> {
+        let boxed_packet: Box<dyn Packet> = self.instance_accessor.as_ref().unwrap()(data);
+        boxed_packet
+    }
+
+    pub fn get_fields(&self) -> Vec<&'static str> {
+        let fields: Vec<&'static str> = self.fields_accessor.as_ref().unwrap()();
+        fields
     }
 }
 
-pub struct JIterator<T> {
-    vec: Vec<T>,
-    position: usize,
+pub struct PacketRegistry {
+    pub keys: HashMap<String, PacketWrapper>,
 }
 
-impl<T> JIterator<T> {
-    pub fn new(vec: Vec<T>) -> Self {
-        return Self {
-            vec,
-            position: 0,
-        };
+impl PacketRegistry {
+    pub fn new() -> Self {
+        Self {
+            keys: HashMap::new()
+        }
     }
 
-    pub fn next(&mut self) -> &T {
-        self.position += 1;
-        &self.vec[self.position - 1]
+    pub fn add_entry(&mut self, name: String, wrapper: PacketWrapper) {
+        self.keys.insert(name, wrapper);
     }
 }
 
@@ -48,7 +60,7 @@ macro_rules! packet {
         }
 
         impl sonet_rs::packet::Packet for $name {
-            fn as_any(&self) -> &dyn Any {
+            fn as_any(&self) -> &dyn std::any::Any {
                 self
             }
         }
@@ -61,16 +73,22 @@ macro_rules! packet {
 
             pub fn new(vec: Vec<Box<dyn Any>>) -> Self {
                 let fields = Self::field_names();
-                let mut iterator = sonet_rs::packet::JIterator::new(vec);
+                let mut iterator = sonet_rs::util::JIterator::new(vec);
                 Self {
                     $($fname : (*iterator.next()).downcast_ref::<$ftype>().unwrap().to_owned() ),*
                 }
             }
 
-            pub fn register(registry: &mut sonet_rs::packet::Registry) {
-                registry.add_entry(stringify!($name).to_string(), Box::new(|vec|{
-                    Box::new(Self::new(vec))
-                }));
+            pub fn register(registry: &mut sonet_rs::packet::PacketRegistry) {
+                let mut wrapper = sonet_rs::packet::PacketWrapper::new(
+                    Some(Box::new(||{
+                        Self::field_names()
+                    })),
+                    Some(Box::new(|vec|{
+                        Box::new(Self::new(vec))
+                    })));
+
+                registry.add_entry(stringify!($name).to_string(), wrapper);
             }
         }
     }

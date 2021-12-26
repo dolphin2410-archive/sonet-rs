@@ -1,4 +1,3 @@
-
 // pub fn serialize(packet: impl Packet) -> Buffer {
 //     unimplemented!()
 // }
