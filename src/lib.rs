@@ -1,12 +1,14 @@
+use std::future::Future;
+use std::net::SocketAddr;
+
+use tokio::io::AsyncReadExt;
+use tokio::net::TcpListener;
+
+use crate::buffer::Buffer;
+
 pub mod buffer;
 pub mod serializer;
 pub mod packet;
-
-use std::future::Future;
-use std::net::SocketAddr;
-use tokio::io::AsyncReadExt;
-use tokio::net::TcpListener;
-use crate::buffer::Buffer;
 
 pub struct SonetServer {
     pub socket: TcpListener

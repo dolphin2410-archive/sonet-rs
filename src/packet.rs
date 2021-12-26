@@ -43,13 +43,11 @@ impl<T> JIterator<T> {
 #[macro_export]
 macro_rules! packet {
     ($name:ident { $($fname:ident : $ftype:ty),* }) => {
-        use sonet_rs::packet::*;
-
         pub struct $name {
             $($fname : $ftype),*
         }
 
-        impl Packet for $name {
+        impl sonet_rs::packet::Packet for $name {
             fn as_any(&self) -> &dyn Any {
                 self
             }
@@ -61,17 +59,9 @@ macro_rules! packet {
                 vec![$(stringify!($fname)),*]
             }
 
-            pub fn type_names() -> Vec<&'static str> {
-                vec![$(stringify!($ftype)),*]
-            }
-
-            pub fn hi() {
-
-            }
-
             pub fn new(vec: Vec<Box<dyn Any>>) -> Self {
                 let fields = Self::field_names();
-                let mut iterator = JIterator::new(vec);
+                let mut iterator = sonet_rs::packet::JIterator::new(vec);
                 Self {
                     $($fname : (*iterator.next()).downcast_ref::<$ftype>().unwrap().to_owned() ),*
                 }

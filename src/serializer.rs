@@ -1,5 +1,3 @@
-use crate::Buffer;
-use crate::packet::Packet;
 
 // pub fn serialize(packet: impl Packet) -> Buffer {
 //     unimplemented!()
