@@ -1,6 +1,7 @@
-[workspace]
-members = [
-    "sonet-common",
-    "sonet-client",
-    "sonet-server"
-]
+[package]
+name = "sonet-rs"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = { version = "1.13.0", features = ["full"] }
