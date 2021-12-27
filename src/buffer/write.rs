@@ -1,4 +1,5 @@
 use std::any::Any;
+use crate::SonetReadBuf;
 
 pub struct SonetWriteBuf {
     data: Vec<u8>,
@@ -8,6 +9,10 @@ pub struct SonetWriteBuf {
 impl SonetWriteBuf {
     pub fn new() -> Self {
         Self { data: vec![], position: 0 }
+    }
+
+    pub fn readable(&mut self) -> SonetReadBuf {
+        SonetReadBuf::new(self.data.to_vec())
     }
 
     pub fn write_byte(&mut self, data: u8) {
@@ -93,7 +98,8 @@ impl SonetWriteBuf {
         self.write_byte_array(&data.as_bytes().to_vec());
     }
 
-    pub fn parse_types(&mut self, types: Vec<&'static str>, data: &'static Vec<Box<dyn Any>>) {
+    pub fn parse_types(&mut self, types: Vec<&'static str>, data: Vec<Box<dyn Any>>) {
+        let data = &data;
         for (index, type_name) in types.into_iter().enumerate() {
             match type_name {
                 "String" => self.write_string(data.as_slice()[index].downcast_ref::<String>().unwrap()),
@@ -124,7 +130,7 @@ impl SonetWriteBuf {
             if self.position + (i as i32) >= self.data.len() as i32 {
                 self.data.push(0);
             }
-            self.data[(self.position + 1) as usize] = data[i];
+            self.data[(self.position) as usize] = data[i];
             self.position += 1;
         }
     }

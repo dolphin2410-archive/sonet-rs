@@ -38,7 +38,11 @@ async fn main() -> Result<(), std::io::Error> {
     println!("{:?}", fields);
 
     let ha= Serializer::new(registry);
-    ha.serialize(Box::new(my_packet));
+    let mut serialized = ha.serialize(Box::new(my_packet));
+    let deserialized = ha.deserialize(&mut serialized);
+    let my_deserialized_packet= deserialized.as_any().downcast_ref::<MyPacket>().unwrap().to_owned();
+    println!("FINAL: {}", &my_deserialized_packet.s);
+
 
     // let mut server = SonetServer::new(registry, 9090).await?;
 
