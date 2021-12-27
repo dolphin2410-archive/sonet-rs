@@ -25,3 +25,7 @@ impl<T> JIterator<T> {
         &self.vec[self.position - 1]
     }
 }
+
+pub struct Application {
+
+}

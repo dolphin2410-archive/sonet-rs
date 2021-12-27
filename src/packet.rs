@@ -91,6 +91,22 @@ impl PacketRegistry {
 }
 
 #[macro_export]
+macro_rules! cast_packet {
+    ($exp:ident -> $ty:ty) => {{
+        let casted = $exp.as_any().downcast_ref::<$ty>().unwrap().to_owned();
+        casted
+    }}
+}
+
+#[macro_export]
+macro_rules! packet_data {
+    ($($exp:expr),*) => {{
+        let vec: Vec<Box<dyn std::any::Any>> = vec![$(Box::new($exp)),*];
+        vec
+    }}
+}
+
+#[macro_export]
 /// Creates a Packet implementation easily.
 ///
 /// eg )
