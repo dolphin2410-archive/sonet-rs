@@ -2,8 +2,10 @@ use std::any::Any;
 
 use sonet_rs::packet;
 use sonet_rs::packet::PacketRegistry;
+use sonet_rs::serializer::Serializer;
 
 packet! {
+    @jvm("io.github.dolphin2410.packets.MyPacket")
     MyPacket {
         s: String
     }
@@ -16,14 +18,16 @@ async fn main() -> Result<(), std::io::Error> {
     let mut registry = PacketRegistry::new();
     MyPacket::register(&mut registry);
 
+    println!("{}", MyPacket::jvm_name());
+
     // Setup Packet Data
     let mut packet_data: Vec<Box<dyn Any>> = Vec::new();
     packet_data.push(Box::new("Oh This is Great!".to_string()));
 
     // Call Packet Wrapper & Generate Packet Instance
-    let packet_wrapper = &registry.keys["MyPacket"];
+    let packet_wrapper = &registry.keys["io.github.dolphin2410.packets.MyPacket"];
     let boxed_packet = packet_wrapper.create_instance(packet_data);
-    let my_packet = boxed_packet.as_any().downcast_ref::<MyPacket>().unwrap();
+    let my_packet= boxed_packet.as_any().downcast_ref::<MyPacket>().unwrap().to_owned();
 
 
     // Call Packet Data
@@ -33,7 +37,10 @@ async fn main() -> Result<(), std::io::Error> {
     let fields: Vec<&'static str> = packet_wrapper.get_fields();
     println!("{:?}", fields);
 
-    // let mut server = SonetServer::new(9090).await?;
+    let ha= Serializer::new(registry);
+    ha.serialize(Box::new(my_packet));
+
+    // let mut server = SonetServer::new(registry, 9090).await?;
 
     // server.start().await?;
     Ok(())

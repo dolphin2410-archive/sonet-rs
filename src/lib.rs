@@ -7,20 +7,23 @@ use std::future::Future;
 use std::net::SocketAddr;
 use tokio::io::AsyncReadExt;
 use tokio::net::TcpListener;
-use crate::buffer::Buffer;
+use crate::buffer::read::SonetReadBuf;
+use crate::packet::PacketRegistry;
 
 pub struct SonetServer {
+    pub packet_registry: PacketRegistry,
     pub socket: TcpListener
 }
 
 impl SonetServer {
-    pub fn new(port: i32) -> impl Future<Output = Result<Self, std::io::Error>> + 'static {
+    pub fn new(packet_registry: PacketRegistry, port: i32) -> impl Future<Output = Result<Self, std::io::Error>> + 'static {
         let socket_address = format!("127.0.0.1:{}", port).parse::<SocketAddr>().expect("Failed to bind port to address");
 
         async move {
             let socket = TcpListener::bind(socket_address).await?;
 
             Ok(SonetServer {
+                packet_registry,
                 socket
             })
         }
@@ -64,8 +67,10 @@ impl SonetServer {
                                 body_buffer.clear();
 
                                 // End if fully read
-                                if read == body_size {
+                                if read >= body_size {
                                     break;
+                                } else {
+                                    println!("Waiting: {}", read);
                                 }
                             },
                             Err(e) => {
@@ -76,10 +81,9 @@ impl SonetServer {
                     }
 
                     // Handle Read Data
-                    let mut buffer = Buffer::new(full_body);
+                    let mut buffer = SonetReadBuf::new(full_body);
 
-                    println!("1: {}", buffer.read_int());
-                    println!("2: {}", buffer.read_int());
+                    println!("1: {}", buffer.read_string());
                 });
             }
         }

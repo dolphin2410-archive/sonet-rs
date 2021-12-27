@@ -3,25 +3,39 @@ use std::collections::HashMap;
 
 pub trait Packet {
     fn as_any(&self) -> &dyn Any;
+
+    fn get_name(&self) -> &'static str;
+
+    fn object_field_names(&self) -> Vec<&'static str>;
+
+    fn object_type_names(&self) -> Vec<&'static str>;
+
+    fn get_values(&self) -> Vec<Box<dyn std::any::Any>>;
 }
 
 pub struct PacketWrapper {
     fields_accessor: Option<Box<dyn Fn() -> Vec<&'static str>>>,
-    instance_accessor: Option<Box<dyn Fn(Vec<Box<dyn Any>>) -> Box<dyn Packet>>>
+    instance_accessor: Option<Box<dyn Fn(Vec<Box<dyn Any>>) -> Box<dyn Packet>>>,
+    types_accessor: Option<Box<dyn Fn() -> Vec<&'static str>>>
 }
 
 impl PacketWrapper {
-    pub fn new(fields_accessor: Option<Box<dyn Fn() -> Vec<&'static str>>>, instance_accessor: Option<Box<dyn Fn(Vec<Box<dyn Any>>) -> Box<dyn Packet>>>) -> Self {
+    pub fn new(
+        fields_accessor: Option<Box<dyn Fn() -> Vec<&'static str>>>,
+        instance_accessor: Option<Box<dyn Fn(Vec<Box<dyn Any>>) -> Box<dyn Packet>>>,
+        types_accessor: Option<Box<dyn Fn() -> Vec<&'static str>>>) -> Self {
         Self {
             fields_accessor,
-            instance_accessor
+            instance_accessor,
+            types_accessor
         }
     }
 
     pub fn new_empty() -> Self {
         Self {
             fields_accessor: None,
-            instance_accessor: None
+            instance_accessor: None,
+            types_accessor: None
         }
     }
 
@@ -33,6 +47,11 @@ impl PacketWrapper {
     pub fn get_fields(&self) -> Vec<&'static str> {
         let fields: Vec<&'static str> = self.fields_accessor.as_ref().unwrap()();
         fields
+    }
+
+    pub fn get_types(&self) -> Vec<&'static str> {
+        let types: Vec<&'static str> = self.types_accessor.as_ref().unwrap()();
+        types
     }
 }
 
@@ -54,14 +73,36 @@ impl PacketRegistry {
 
 #[macro_export]
 macro_rules! packet {
-    ($name:ident { $($fname:ident : $ftype:ty),* }) => {
+    (@jvm($jvmname:literal) $name:ident { $($fname:ident : $ftype:ty),* }) => {
+
+        #[derive(Clone)]
         pub struct $name {
-            $($fname : $ftype),*
+            pub $($fname : $ftype),*
         }
 
         impl sonet_rs::packet::Packet for $name {
             fn as_any(&self) -> &dyn std::any::Any {
                 self
+            }
+
+            fn get_name(&self) -> &'static str {
+                $jvmname
+            }
+
+            fn object_field_names(&self) -> Vec<&'static str> {
+                vec![$(stringify!($fname)),*]
+            }
+
+            fn object_type_names(&self) -> Vec<&'static str> {
+                vec![$(stringify!($ftype)),*]
+            }
+
+            fn get_values(&self) -> Vec<Box<dyn std::any::Any>> {
+                let mut values: Vec<Box<dyn std::any::Any>> = vec![];
+
+                $(values.push(Box::new(self.$fname.clone()));)*
+
+                values
             }
         }
 
@@ -69,6 +110,10 @@ macro_rules! packet {
 
             pub fn field_names() -> Vec<&'static str> {
                 vec![$(stringify!($fname)),*]
+            }
+
+            pub fn type_names() -> Vec<&'static str> {
+                vec![$(stringify!($ftype)),*]
             }
 
             pub fn new(vec: Vec<Box<dyn Any>>) -> Self {
@@ -79,6 +124,10 @@ macro_rules! packet {
                 }
             }
 
+            fn jvm_name() -> &'static str {
+                $jvmname
+            }
+
             pub fn register(registry: &mut sonet_rs::packet::PacketRegistry) {
                 let mut wrapper = sonet_rs::packet::PacketWrapper::new(
                     Some(Box::new(||{
@@ -86,10 +135,13 @@ macro_rules! packet {
                     })),
                     Some(Box::new(|vec|{
                         Box::new(Self::new(vec))
+                    })),
+                    Some(Box::new(||{
+                        Self::type_names()
                     })));
 
-                registry.add_entry(stringify!($name).to_string(), wrapper);
+                registry.add_entry($jvmname.to_string(), wrapper);
             }
         }
-    }
+    };
 }
