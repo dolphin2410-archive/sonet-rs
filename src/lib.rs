@@ -10,12 +10,16 @@ use tokio::net::TcpListener;
 use crate::buffer::read::SonetReadBuf;
 use crate::packet::PacketRegistry;
 
+/// The SonetServer struct
 pub struct SonetServer {
     pub packet_registry: PacketRegistry,
     pub socket: TcpListener
 }
 
+/// The Default Implementation
 impl SonetServer {
+
+    /// New SonetServer Future. Requires Asynchronous runtime
     pub fn new(packet_registry: PacketRegistry, port: i32) -> impl Future<Output = Result<Self, std::io::Error>> + 'static {
         let socket_address = format!("127.0.0.1:{}", port).parse::<SocketAddr>().expect("Failed to bind port to address");
 
@@ -29,10 +33,13 @@ impl SonetServer {
         }
     }
 
+    /// Starts the server. This requires the asynchronous runtime
     pub fn start(&mut self) -> impl Future<Output = Result<(), std::io::Error>> + '_ {
         async move {
             loop {
                 let (mut socket, _) = self.socket.accept().await?;
+
+                // Spawn new async
                 tokio::spawn(async move {
                     // Header Buffer
                     let mut header_buffer = [0; 4];

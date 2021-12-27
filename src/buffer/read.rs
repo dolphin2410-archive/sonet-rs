@@ -1,10 +1,12 @@
 use std::any::Any;
 
+/// SonetReadBuf
 pub struct SonetReadBuf {
     data: Vec<u8>,
     position: i32
 }
 
+/// Default SonetReadBuf Implementation
 impl SonetReadBuf {
     pub fn new(data: Vec<u8>) -> Self {
         Self { data, position: 0 }

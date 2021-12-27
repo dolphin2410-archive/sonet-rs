@@ -2,7 +2,7 @@ use std::any::Any;
 
 use sonet_rs::packet;
 use sonet_rs::packet::PacketRegistry;
-use sonet_rs::serializer::Serializer;
+use sonet_rs::serializer::Codec;
 
 packet! {
     @jvm("io.github.dolphin2410.packets.MyPacket")
@@ -37,7 +37,7 @@ async fn main() -> Result<(), std::io::Error> {
     let fields: Vec<&'static str> = packet_wrapper.get_fields();
     println!("{:?}", fields);
 
-    let ha= Serializer::new(registry);
+    let ha= Codec::new(registry);
     let mut serialized = ha.serialize(Box::new(my_packet));
     let deserialized = ha.deserialize(&mut serialized);
     let my_deserialized_packet= deserialized.as_any().downcast_ref::<MyPacket>().unwrap().to_owned();
