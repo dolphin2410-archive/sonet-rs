@@ -49,7 +49,12 @@ impl PacketWrapper {
     }
 
     /// Generate instance with the supplier
-    pub fn create_instance(&self, data: Vec<Box<dyn Any>>) -> Box<dyn Packet> {
+    pub fn create_instance<T: Packet + Clone + 'static>(&self, data: Vec<Box<dyn Any>>) -> T {
+        let boxed_packet: Box<dyn Packet> = self.instance_accessor.as_ref().unwrap()(data);
+        crate::cast_packet!(boxed_packet as T)
+    }
+
+    pub fn create_instance_box(&self, data: Vec<Box<dyn Any>>) -> Box<dyn Packet> {
         let boxed_packet: Box<dyn Packet> = self.instance_accessor.as_ref().unwrap()(data);
         boxed_packet
     }
@@ -88,12 +93,23 @@ impl PacketRegistry {
     pub fn register(&mut self, name: String, wrapper: PacketWrapper) {
         self.keys.insert(name, wrapper);
     }
+
+    pub fn get(&self, key: &str) -> &PacketWrapper {
+        &self.keys[key]
+    }
+}
+
+#[macro_export]
+macro_rules! register_packet {
+    ($registry:ident, $packet:ident) => {{
+        $packet::register(&mut $registry);
+    }}
 }
 
 #[macro_export]
 macro_rules! cast_packet {
-    ($exp:ident -> $ty:ty) => {{
-        let casted = $exp.as_any().downcast_ref::<$ty>().unwrap().to_owned();
+    ($exp:ident as $ty:ty) => {{
+        let casted = $exp.as_any().downcast_ref::<$ty>().unwrap().clone();
         casted
     }}
 }

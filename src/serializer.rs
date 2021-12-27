@@ -3,17 +3,17 @@ use crate::buffer::write::SonetWriteBuf;
 use crate::packet::{Packet, PacketRegistry};
 
 /// The Serializer & Deserializer for a packet
-pub struct Codec {
+pub struct Codec<'a> {
 
     /// The packet registry
-    pub registry: PacketRegistry,
+    pub registry: &'a PacketRegistry,
 }
 
-impl Codec {
+impl <'a> Codec<'a> {
 
     /// Creates a new Codec instance
-    pub fn new(registry: PacketRegistry) -> Self {
-        Self { registry }
+    pub fn new(registry: &'a PacketRegistry) -> Codec<'a> {
+        Codec { registry }
     }
 
     /// Serializes the packet object into a ReadBuffer
@@ -46,7 +46,7 @@ impl Codec {
         let packet_name = buffer.read_string();
 
         // Get the instance-creation supplier from the registry.
-        let packet_wrapper = &self.registry.keys.get(&packet_name).unwrap();
+        let packet_wrapper = self.registry.get(&packet_name);
 
         // Get the packet's struct field types
         let types = packet_wrapper.get_types();
@@ -55,6 +55,6 @@ impl Codec {
         let data = buffer.parse_types(types);
 
         // Create instance with the value given
-        packet_wrapper.create_instance(data)
+        packet_wrapper.create_instance_box(data)
     }
 }
