@@ -2,22 +2,22 @@ use crate::buffer::read::SonetReadBuf;
 use crate::buffer::write::SonetWriteBuf;
 use crate::packet::{Packet, PacketRegistry};
 
-/// The Serializer & Deserializer for a packet
-pub struct Codec<'a> {
+/// The Serializer & Deserializer for a pack
+pub struct Codec {
 
     /// The packet registry
-    pub registry: &'a PacketRegistry,
+    pub registry: PacketRegistry,
 }
 
-impl <'a> Codec<'a> {
+impl Codec {
 
     /// Creates a new Codec instance
-    pub fn new(registry: &'a PacketRegistry) -> Codec<'a> {
+    pub fn new(registry: PacketRegistry) -> Codec {
         Codec { registry }
     }
 
     /// Serializes the packet object into a ReadBuffer
-    pub fn serialize(&self, packet: Box<impl Packet>) -> SonetReadBuf {
+    pub fn serialize(&self, packet: &Box<dyn Packet>) -> SonetReadBuf {
         // Name of the packet
         let name = packet.get_name();
 

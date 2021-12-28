@@ -24,13 +24,13 @@ pub trait Packet {
 pub struct PacketWrapper {
 
     /// Supplier for fields
-    fields_accessor: Option<Box<dyn Fn() -> Vec<&'static str>>>,
+    fields_accessor: Option<Box<dyn Fn() -> Vec<&'static str> + Send + Sync>>,
 
     /// Supplier for instances
-    instance_accessor: Option<Box<dyn Fn(Vec<Box<dyn Any>>) -> Box<dyn Packet>>>,
+    instance_accessor: Option<Box<dyn Fn(Vec<Box<dyn Any>>) -> Box<dyn Packet> + Send + Sync>>,
 
     /// Supplier for types
-    types_accessor: Option<Box<dyn Fn() -> Vec<&'static str>>>
+    types_accessor: Option<Box<dyn Fn() -> Vec<&'static str> + Send + Sync>>
 }
 
 /// Default PacketWrapper Implementation
@@ -38,9 +38,9 @@ impl PacketWrapper {
 
     /// Creates a new wrapper instance
     pub fn new(
-        fields_accessor: Option<Box<dyn Fn() -> Vec<&'static str>>>,
-        instance_accessor: Option<Box<dyn Fn(Vec<Box<dyn Any>>) -> Box<dyn Packet>>>,
-        types_accessor: Option<Box<dyn Fn() -> Vec<&'static str>>>) -> Self {
+        fields_accessor: Option<Box<dyn Fn() -> Vec<&'static str> + Send + Sync>>,
+        instance_accessor: Option<Box<dyn Fn(Vec<Box<dyn Any>>) -> Box<dyn Packet> + Send + Sync>>,
+        types_accessor: Option<Box<dyn Fn() -> Vec<&'static str> + Send + Sync>>) -> Self {
         Self {
             fields_accessor,
             instance_accessor,
@@ -50,24 +50,24 @@ impl PacketWrapper {
 
     /// Generate instance with the supplier
     pub fn create_instance<T: Packet + Clone + 'static>(&self, data: Vec<Box<dyn Any>>) -> T {
-        let boxed_packet: Box<dyn Packet> = self.instance_accessor.as_ref().unwrap()(data);
+        let boxed_packet: &Box<dyn Packet> = &self.instance_accessor.as_ref().unwrap().as_ref()(data);
         crate::cast_packet!(boxed_packet as T)
     }
 
     pub fn create_instance_box(&self, data: Vec<Box<dyn Any>>) -> Box<dyn Packet> {
-        let boxed_packet: Box<dyn Packet> = self.instance_accessor.as_ref().unwrap()(data);
+        let boxed_packet: Box<dyn Packet> = self.instance_accessor.as_ref().unwrap().as_ref()(data);
         boxed_packet
     }
 
     /// Get the field names with the supplier
     pub fn get_fields(&self) -> Vec<&'static str> {
-        let fields: Vec<&'static str> = self.fields_accessor.as_ref().unwrap()();
+        let fields: Vec<&'static str> = self.fields_accessor.as_ref().unwrap().as_ref()();
         fields
     }
 
     /// Get the field types with the supplier
     pub fn get_types(&self) -> Vec<&'static str> {
-        let types: Vec<&'static str> = self.types_accessor.as_ref().unwrap()();
+        let types: Vec<&'static str> = self.types_accessor.as_ref().unwrap().as_ref()();
         types
     }
 }
@@ -103,6 +103,13 @@ impl PacketRegistry {
 macro_rules! register_packet {
     ($registry:ident, $packet:ident) => {{
         $packet::register(&mut $registry);
+    }}
+}
+
+#[macro_export]
+macro_rules! register_packet_ref {
+    ($registry:ident, $packet:ident) => {{
+        $packet::register($registry);
     }}
 }
 
@@ -146,7 +153,7 @@ macro_rules! packet {
             pub $($fname : $ftype),*
         }
 
-        impl sonet_rs::packet::Packet for $name {
+        impl crate::packet::Packet for $name {
             fn as_any(&self) -> &dyn std::any::Any {
                 self
             }
@@ -182,20 +189,19 @@ macro_rules! packet {
                 vec![$(stringify!($ftype)),*]
             }
 
-            pub fn new(vec: Vec<Box<dyn Any>>) -> Self {
-                let fields = Self::field_names();
-                let mut iterator = sonet_rs::util::JIterator::new(vec);
+            pub fn new(vec: Vec<Box<dyn std::any::Any>>) -> Self {
+                let mut iterator = crate::util::JIterator::new(vec);
                 Self {
                     $($fname : (*iterator.next()).downcast_ref::<$ftype>().unwrap().to_owned() ),*
                 }
             }
 
-            fn jvm_name() -> &'static str {
-                $jvmname
-            }
+            // fn jvm_name() -> &'static str {
+            //     $jvmname
+            // }
 
-            pub fn register(registry: &mut sonet_rs::packet::PacketRegistry) {
-                let mut wrapper = sonet_rs::packet::PacketWrapper::new(
+            pub fn register(registry: &mut crate::packet::PacketRegistry) {
+                let wrapper = crate::packet::PacketWrapper::new(
                     Some(Box::new(||{
                         Self::field_names()
                     })),

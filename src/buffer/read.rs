@@ -14,7 +14,7 @@ impl SonetReadBuf {
 
     pub fn read_byte(&mut self) -> u8 {
         let mut fixed = [0_u8; 1];
-        fixed.copy_from_slice(&self.data[self.position as usize .. (self.position + 1) as usize]);
+        fixed.copy_from_slice(&[self.data[self.position as usize]]);
         self.position += 1;
         u8::from_be_bytes(fixed)
     }
