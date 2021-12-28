@@ -150,7 +150,7 @@ macro_rules! packet {
 
         #[derive(Clone)]
         pub struct $name {
-            pub $($fname : $ftype),*
+            $(pub $fname : $ftype),*
         }
 
         impl crate::packet::Packet for $name {

@@ -5,11 +5,11 @@ pub mod util;
 
 use std::net::SocketAddr;
 use std::sync::Arc;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::AsyncReadExt;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::Mutex;
 use crate::buffer::read::SonetReadBuf;
-use crate::packet::{Packet, PacketRegistry};
+use crate::packet::PacketRegistry;
 use crate::serializer::Codec;
 
 packet! {
@@ -97,20 +97,20 @@ impl SonetServer {
         let mut registry = registry;
         register_packet!(registry, MyPacket);
         let codec = Arc::new(Mutex::new(Codec::new(registry)));
-        let mut v: Vec<Box<dyn Packet>> = vec![];
+        // let mut v: Vec<Box<dyn Packet>> = vec![];
 
         let socket = TcpListener::bind(self.socket_address).await?;
 
         loop {
-            let (mut socket, _) = socket.accept().await?;
+            let (socket, _) = socket.accept().await?;
 
             // Spawn new async
             tokio::spawn(Self::handle(codec.clone(), socket));
-            let mut serialized = vec![];
-            for item in &v {
-                let buf = codec.clone().lock().await.serialize(item);
-                serialized.push(buf);
-            }
+            // let mut serialized = vec![];
+            // for item in &v {
+            //     let buf = codec.clone().lock().await.serialize(item);
+            //     serialized.push(buf);
+            // }
         }
     }
 
