@@ -100,6 +100,13 @@ impl PacketRegistry {
 }
 
 #[macro_export]
+macro_rules! is_type {
+    ($packet:ident, $packet_type:ident) => {{
+        $packet.as_any().is::<$packet_type>()
+    }}
+}
+
+#[macro_export]
 macro_rules! register_packet {
     ($registry:ident, $packet:ident) => {{
         $packet::register(&mut $registry);
@@ -153,7 +160,7 @@ macro_rules! packet {
             $(pub $fname : $ftype),*
         }
 
-        impl crate::packet::Packet for $name {
+        impl sonet_rs::packet::Packet for $name {
             fn as_any(&self) -> &dyn std::any::Any {
                 self
             }
@@ -190,7 +197,7 @@ macro_rules! packet {
             }
 
             pub fn new(vec: Vec<Box<dyn std::any::Any>>) -> Self {
-                let mut iterator = crate::util::JIterator::new(vec);
+                let mut iterator = sonet_rs::util::JIterator::new(vec);
                 Self {
                     $($fname : (*iterator.next()).downcast_ref::<$ftype>().unwrap().to_owned() ),*
                 }
@@ -201,7 +208,7 @@ macro_rules! packet {
             // }
 
             pub fn register(registry: &mut crate::packet::PacketRegistry) {
-                let wrapper = crate::packet::PacketWrapper::new(
+                let wrapper = sonet_rs::packet::PacketWrapper::new(
                     Some(Box::new(||{
                         Self::field_names()
                     })),

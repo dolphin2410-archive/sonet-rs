@@ -1,12 +1,29 @@
-use sonet_rs::SonetServer;
+use sonet_rs::{SonetServer, is_type, packet, cast_packet, register_packet};
 use sonet_rs::packet::PacketRegistry;
+
+packet! {
+    @jvm("io.github.dolphin2410.MyPacket")
+    MyPacket {
+        s: String
+    }
+}
+
 
 #[tokio::main]
 async fn main() -> Result<(), std::io::Error> {
+    let mut registry = PacketRegistry::new();
+    register_packet!(registry, MyPacket);
 
-    let registry = PacketRegistry::new();
+    let mut server = SonetServer::new(9090).await?;
+    server.add_handler(|packet| {
+        println!("Packet!");
+        if is_type!(packet, MyPacket) {
+            let my_packet = cast_packet!(packet as MyPacket);
+            println!("MyPacket!");
+            println!("s: {}", &my_packet.s)
+        }
+    });
 
-    let server = SonetServer::new(9090).await?;
     server.start(registry).await?;
 
     Ok(())

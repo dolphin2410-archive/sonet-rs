@@ -5,23 +5,18 @@ pub mod util;
 
 use std::net::SocketAddr;
 use std::sync::Arc;
-use tokio::io::AsyncReadExt;
+use packet::Packet;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::Mutex;
 use crate::buffer::read::SonetReadBuf;
 use crate::packet::PacketRegistry;
 use crate::serializer::Codec;
 
-packet! {
-    @jvm("io.github.dolphin2410.MyPacket")
-    MyPacket {
-        s: String
-    }
-}
-
 /// The SonetServer struct
 pub struct SonetServer {
     pub socket_address: SocketAddr,
+    pub handlers: Vec<Box<dyn Fn(&Box<dyn Packet>)>>
 }
 
 /// The Default Implementation
@@ -31,10 +26,15 @@ impl SonetServer {
         let socket_address = format!("127.0.0.1:{}", port).parse::<SocketAddr>().expect("Failed to bind port to address");
         Ok(SonetServer {
             socket_address,
+            handlers: vec![]
         })
     }
 
-    pub async fn handle(codec: Arc<Mutex<Codec>>, socket: TcpStream) {
+    pub async fn write_packet(codec: Arc<Mutex<Codec>>, socket: &mut TcpStream, packet: Box<dyn Packet>) {
+        socket.write_all(codec.lock().await.serialize(&packet).data.as_mut()).await.unwrap();
+    }
+
+    pub async fn handle(codec: Arc<Mutex<Codec>>, socket: TcpStream) -> Box<dyn Packet> {
         let mut mut_socket = socket;
 
         // Header Buffer
@@ -74,8 +74,7 @@ impl SonetServer {
                     }
                 }
                 Err(e) => {
-                    eprintln!("Error: {}", e);
-                    return;
+                    panic!("Error: {}", e);
                 }
             };
         }
@@ -84,18 +83,15 @@ impl SonetServer {
 
         // Handle Read Data
         let mut buffer = SonetReadBuf::new(full_body);
-        let boxed = safe_codec.deserialize(&mut buffer);
-        let packet = cast_packet!(boxed as MyPacket);
+        safe_codec.deserialize(&mut buffer)
 
-        println!("1: {}", &packet.s);
+        // write_packet
 
         // Flush To Write
     }
 
     /// Starts the server. This requires the asynchronous runtime
     pub async fn start(&self, registry: PacketRegistry) -> Result<(), std::io::Error> {
-        let mut registry = registry;
-        register_packet!(registry, MyPacket);
         let codec = Arc::new(Mutex::new(Codec::new(registry)));
         // let mut v: Vec<Box<dyn Packet>> = vec![];
 
@@ -105,13 +101,22 @@ impl SonetServer {
             let (socket, _) = socket.accept().await?;
 
             // Spawn new async
-            tokio::spawn(Self::handle(codec.clone(), socket));
+            let packet_obj = Self::handle(codec.clone(), socket).await;
+            let boxed = Box::new(packet_obj);
+            for closure in self.handlers.iter() {
+                closure(&boxed)
+            }
+
             // let mut serialized = vec![];
             // for item in &v {
             //     let buf = codec.clone().lock().await.serialize(item);
             //     serialized.push(buf);
             // }
         }
+    }
+
+    pub fn add_handler<T>(&mut self, closure: T) where T: Fn(&Box<dyn Packet>) + 'static {
+        self.handlers.push(Box::new(closure));
     }
 
     pub fn stop(&mut self) {}

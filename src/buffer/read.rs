@@ -2,7 +2,7 @@ use std::any::Any;
 
 /// SonetReadBuf
 pub struct SonetReadBuf {
-    data: Vec<u8>,
+    pub data: Vec<u8>,
     position: i32
 }
 
