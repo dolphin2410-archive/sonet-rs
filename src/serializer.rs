@@ -37,6 +37,16 @@ impl Codec {
         buf.parse_types(types, data);
 
         // Convert WriteBuf -> ReadBuf
+        let read_buf = buf.readable();
+
+        let len = read_buf.data.len();
+
+        let mut buf = SonetWriteBuf::new();
+        
+        buf.write_int(len as u32);
+
+        buf.write_raw(read_buf.data.as_slice());
+
         buf.readable()
     }
 

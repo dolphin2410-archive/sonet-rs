@@ -20,6 +20,7 @@ pub trait Packet {
     fn get_values(&self) -> Vec<Box<dyn std::any::Any>>;
 }
 
+
 /// PacketWrapper contains a supplier that generates a packet instance with Vector parameters
 pub struct PacketWrapper {
 

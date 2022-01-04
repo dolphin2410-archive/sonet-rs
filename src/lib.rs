@@ -2,11 +2,13 @@ pub mod buffer;
 pub mod serializer;
 pub mod packet;
 pub mod util;
+pub mod connection;
 
 use std::net::SocketAddr;
 use std::sync::Arc;
+use connection::Connection;
 use packet::Packet;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::AsyncReadExt;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::Mutex;
 use crate::buffer::read::SonetReadBuf;
@@ -16,7 +18,7 @@ use crate::serializer::Codec;
 /// The SonetServer struct
 pub struct SonetServer {
     pub socket_address: SocketAddr,
-    pub handlers: Vec<Box<dyn Fn(&Box<dyn Packet>)>>
+    pub handlers: Vec<Box<dyn Fn(&Box<dyn Packet>, Connection)>>
 }
 
 /// The Default Implementation
@@ -30,12 +32,8 @@ impl SonetServer {
         })
     }
 
-    pub async fn write_packet(codec: Arc<Mutex<Codec>>, socket: &mut TcpStream, packet: Box<dyn Packet>) {
-        socket.write_all(codec.lock().await.serialize(&packet).data.as_mut()).await.unwrap();
-    }
-
-    pub async fn handle(codec: Arc<Mutex<Codec>>, socket: TcpStream) -> Box<dyn Packet> {
-        let mut mut_socket = socket;
+    pub async fn handle(codec: Arc<Mutex<Codec>>, socket: Arc<Mutex<TcpStream>>) -> Box<dyn Packet> {
+        let mut mut_socket = socket.lock().await;
 
         // Header Buffer
         let mut header_buffer = [0; 4];
@@ -100,22 +98,19 @@ impl SonetServer {
         loop {
             let (socket, _) = socket.accept().await?;
 
-            // Spawn new async
-            let packet_obj = Self::handle(codec.clone(), socket).await;
-            let boxed = Box::new(packet_obj);
-            for closure in self.handlers.iter() {
-                closure(&boxed)
-            }
+            let socket_mutex = Arc::new(Mutex::new(socket));
 
-            // let mut serialized = vec![];
-            // for item in &v {
-            //     let buf = codec.clone().lock().await.serialize(item);
-            //     serialized.push(buf);
-            // }
+            // Spawn new async
+            let packet_obj = Self::handle(codec.clone(), socket_mutex.clone()).await;
+            let boxed = Box::new(packet_obj);
+
+            for closure in self.handlers.iter() {
+                closure(&boxed, Connection::new(socket_mutex.clone(), codec.clone()))
+            }
         }
     }
 
-    pub fn add_handler<T>(&mut self, closure: T) where T: Fn(&Box<dyn Packet>) + 'static {
+    pub fn add_handler<T>(&mut self, closure: T) where T: Fn(&Box<dyn Packet>, Connection) + 'static {
         self.handlers.push(Box::new(closure));
     }
 
