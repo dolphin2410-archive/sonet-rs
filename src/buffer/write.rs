@@ -1,5 +1,5 @@
 use std::any::Any;
-use crate::SonetReadBuf;
+use crate::buffer::read::SonetReadBuf;
 
 /// Writable Buf
 pub struct SonetWriteBuf {
