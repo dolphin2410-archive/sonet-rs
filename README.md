@@ -16,7 +16,7 @@ Documentation can be found [here](https://sonet.dolphin2410.tk/#/rust/)
 # Cargo.toml
 
 [dependencies]
-sonet-rs = "1.0.0-RC"
+sonet-rs = "1.0.0"
 ```
 
 ## License
