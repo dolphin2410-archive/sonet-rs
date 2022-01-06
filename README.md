@@ -1,6 +1,8 @@
 # sonet-rs
 **Lightweight TCP Communication Library**
 
+![img](https://img.shields.io/crates/v/sonet-rs.svg)
+
 ## Introduction
 Made compatible with the [sonet library](https://github.com/dolphin2410/sonet), this project aims to run on systems without any third party software like the JVM.
 
