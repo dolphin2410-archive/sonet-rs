@@ -2,6 +2,12 @@
 name = "sonet-rs"
 version = "1.0.0-beta"
 edition = "2021"
+keywords = ["network", "tcp", "packets"]
+categories = ["network-programming"]
+license-file = "LICENSE"
+description = "Lightweight TCP Communication Library"
+repository  = "https://github.com/dolphin2410/sonet-rs"
+readme = "README.md"
 
 [dependencies]
 tokio = { version = "1.13.0", features = ["full"] }
