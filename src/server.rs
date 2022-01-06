@@ -37,14 +37,14 @@ impl SonetServer {
                     socket,
                     codec: codec.clone(),
                 },
-                packet_handlers: vec![]
+                packet_handlers: Arc::new(Mutex::new(vec![]))
             };
 
             for handler in self.client_handlers.iter() {
                 handler(&mut client);
             }
 
-            client.initialize().await?; // STOP BLOCKING!
+            Box::leak(Box::new(client)).initialize().await?; // STOP BLOCKING! 
         }
     }
 

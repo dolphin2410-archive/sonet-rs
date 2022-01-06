@@ -1,12 +1,12 @@
-use std::sync::Arc;
+use std::{sync::Arc, net::SocketAddr};
 
 use tokio::{net::TcpStream, io::{AsyncReadExt, AsyncWriteExt}, sync::Mutex};
 
-use crate::{serializer::Codec, buffer::read::SonetReadBuf, packet::Packet};
+use crate::{serializer::Codec, buffer::read::SonetReadBuf, packet::{Packet, PacketRegistry}};
 
 pub struct Client {
     pub connection: Connection,
-    pub packet_handlers: Vec<Box<dyn FnMut(&Box<dyn Packet>, &mut Connection)>>
+    pub packet_handlers: Arc<Mutex<Vec<Box<dyn FnMut(&Box<dyn Packet + Send + Sync>, &mut Connection) + Send>>>>
 }
 
 pub struct Connection {
@@ -14,25 +14,42 @@ pub struct Connection {
     pub codec: Arc<Mutex<Codec>>
 }
 
-
 impl Client {
-    pub async fn initialize(&mut self) -> Result<(), std::io::Error> {
-        loop {
-            let packet = self.connection.retrieve().await?;
+    pub async fn new(port: i32, registry: PacketRegistry) -> Client {
+        Client {
+            connection: Connection {
+                socket: TcpStream::connect(format!("127.0.0.1:{}", port).parse::<SocketAddr>().unwrap()).await.unwrap(),
+                codec: Arc::new(Mutex::new(Codec::new(registry)))
+            },
+            packet_handlers: Arc::new(Mutex::new(vec![]))
+        }
+    }
 
-            for handler in self.packet_handlers.iter_mut() {
-                handler(&packet, &mut self.connection);
+    pub async fn handle(connection: &mut Connection, packet_handlers: Arc<Mutex<Vec<Box<dyn FnMut(&Box<dyn Packet + Send + Sync>, &mut Connection) + Send>>>>) -> Result<(), std::io::Error> {
+        loop {
+            let packet = connection.retrieve().await?;
+
+            for handler in packet_handlers.lock().await.iter_mut() {
+                handler(&packet, connection);
             }
         }
     }
 
-    pub fn add_handler<T>(&mut self, closure: T) where T: FnMut(&Box<dyn Packet>, &mut Connection) + 'static {
-        self.packet_handlers.push(Box::new(closure));
+    pub async fn initialize(&'static mut self) -> Result<(), std::io::Error> {
+        tokio::spawn(Self::handle(&mut self.connection, self.packet_handlers.clone()));
+
+        Ok(())
+    }
+
+    pub fn add_handler<T>(&mut self, closure: T) where T: FnMut(&Box<dyn Packet + Send + Sync>, &mut Connection) + Send + 'static {
+        futures::executor::block_on(async {
+            self.packet_handlers.lock().await.push(Box::new(closure));
+        })
     }
 }
 
 impl Connection {
-    pub async fn retrieve(&mut self) -> Result<Box<dyn Packet>, std::io::Error> {
+    pub async fn retrieve(&mut self) -> Result<Box<dyn Packet + Send + Sync>, std::io::Error> {
 
         self.socket.readable().await?;
 
@@ -59,8 +76,8 @@ impl Connection {
             match self.socket.read_buf(&mut body_buffer).await {
                 Ok(_) => {
                     // Add all read data to the full body buffer
-                    for i in body_buffer.clone() {
-                        full_body.push(i);
+                    for byte in body_buffer.clone() {
+                        full_body.push(byte);
                         read += 1;
                     }
 

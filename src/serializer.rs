@@ -51,7 +51,7 @@ impl Codec {
     }
 
     /// Deserializes the ReadBuffer into a packet instance
-    pub fn deserialize(&self, buffer: &mut SonetReadBuf) -> Box<dyn Packet> {
+    pub fn deserialize(&self, buffer: &mut SonetReadBuf) -> Box<dyn Packet + Send + Sync> {
         // Read the packet's name
         let packet_name = buffer.read_string();
 

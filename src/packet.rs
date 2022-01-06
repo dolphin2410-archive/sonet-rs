@@ -20,7 +20,6 @@ pub trait Packet {
     fn get_values(&self) -> Vec<Box<dyn std::any::Any>>;
 }
 
-
 /// PacketWrapper contains a supplier that generates a packet instance with Vector parameters
 pub struct PacketWrapper {
 
@@ -28,7 +27,7 @@ pub struct PacketWrapper {
     fields_accessor: Option<Box<dyn Fn() -> Vec<&'static str> + Send + Sync>>,
 
     /// Supplier for instances
-    instance_accessor: Option<Box<dyn Fn(Vec<Box<dyn Any>>) -> Box<dyn Packet> + Send + Sync>>,
+    instance_accessor: Option<Box<dyn Fn(Vec<Box<dyn Any>>) -> Box<dyn Packet + Send + Sync> + Send + Sync>>,
 
     /// Supplier for types
     types_accessor: Option<Box<dyn Fn() -> Vec<&'static str> + Send + Sync>>
@@ -40,7 +39,7 @@ impl PacketWrapper {
     /// Creates a new wrapper instance
     pub fn new(
         fields_accessor: Option<Box<dyn Fn() -> Vec<&'static str> + Send + Sync>>,
-        instance_accessor: Option<Box<dyn Fn(Vec<Box<dyn Any>>) -> Box<dyn Packet> + Send + Sync>>,
+        instance_accessor: Option<Box<dyn Fn(Vec<Box<dyn Any>>) -> Box<dyn Packet + Send + Sync> + Send + Sync>>,
         types_accessor: Option<Box<dyn Fn() -> Vec<&'static str> + Send + Sync>>) -> Self {
         Self {
             fields_accessor,
@@ -50,13 +49,13 @@ impl PacketWrapper {
     }
 
     /// Generate instance with the supplier
-    pub fn create_instance<T: Packet + Clone + 'static>(&self, data: Vec<Box<dyn Any>>) -> T {
-        let boxed_packet: &Box<dyn Packet> = &self.instance_accessor.as_ref().unwrap().as_ref()(data);
+    pub fn create_instance<T: Packet + Clone + Send + Sync + 'static>(&self, data: Vec<Box<dyn Any>>) -> T {
+        let boxed_packet: &Box<dyn Packet + Send + Sync> = &self.instance_accessor.as_ref().unwrap().as_ref()(data);
         crate::cast_packet!(boxed_packet as T)
     }
 
-    pub fn create_instance_box(&self, data: Vec<Box<dyn Any>>) -> Box<dyn Packet> {
-        let boxed_packet: Box<dyn Packet> = self.instance_accessor.as_ref().unwrap().as_ref()(data);
+    pub fn create_instance_box(&self, data: Vec<Box<dyn Any>>) -> Box<dyn Packet + Send + Sync> {
+        let boxed_packet: Box<dyn Packet + Send + Sync> = self.instance_accessor.as_ref().unwrap().as_ref()(data);
         boxed_packet
     }
 
