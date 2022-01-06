@@ -13,7 +13,7 @@ Made compatible with the [sonet library](https://github.com/dolphin2410/sonet), 
 # Cargo.toml
 
 [dependencies]
-sonet-rs = "1.0.0-beta"
+sonet-rs = "1.0.0-RC"
 ```
 
 ## License
