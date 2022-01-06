@@ -8,6 +8,9 @@ Made compatible with the [sonet library](https://github.com/dolphin2410/sonet), 
 - Being one of my earliest network-related rust project, it might somewhat be unsecure.
 - This project is currently under development and is unstable. Please contribute or file an issue in order to help this project.
 
+## Documentation
+Documentation can be found [here](https://sonet.dolphin2410.tk/#/rust/)
+
 ## Usage
 ```toml
 # Cargo.toml
